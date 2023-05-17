@@ -59,12 +59,26 @@ vpc:
 
 availabilityZones: ["${AWS_REGION}a", "${AWS_REGION}b", "${AWS_REGION}c"]
 
+#nodeGroups:
+#- name: ng-2
+#  minSize: 1
+#  maxSize: 5
+#  desiredCapacity: 3
+#  instancesDistribution:
+#    maxPrice: 0.017
+#    instanceTypes: ["m5.xlarge"]
+#    onDemandPercentageAboveBaseCapacity: 0
+#    spotInstancePools: 2
+
 managedNodeGroups:
 - name: eks-node-group
   instanceType: t2.micro
+  minSize: 1
+  maxSize: 5
   desiredCapacity: 3
   volumeSize: 30
   privateNetworking: true
+  # spot: true
   iam:
     withAddonPolicies:
       autoScaler: true # enable auto auto scaler, then install resource: https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md
