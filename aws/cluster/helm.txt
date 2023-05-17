@@ -1,0 +1,133 @@
+# list helm releases
+helm list -n default
+helm list --all-namespaces
+helm list --kube-context a-context --all-namespaces
+
+# add remote helm repo
+helm repo add repo-name URL
+
+# list of repositories
+helm repo list
+
+# update repository
+helm repo update .
+
+# remove helm repo
+helm repo remove repo-name
+
+# search packages
+helm search repo package-name
+
+# install helm chart
+helm install example-release ./nginx-example
+
+# can be used to view the current state of release
+helm status release-name
+
+# upgrade running chart version, helm upgrades what's changed only, the source chart is not changed, the running release is changed only
+helm upgrade example-release ./nginx-example -set image.tag='alpine'
+
+# helm charts
+# https://docs.bitnami.com/kubernetes/faq/administration/understand-helm-chart/
+ChartFolder/
+Chart.yaml # info about chart, dependencies, version
+LICENSE # license info if any
+README.md
+values.yaml # predefined (default) values passed to templates, can be overridden by values passed on the cmd line
+values.schema.json # optional schema for values
+charts/ # dependencies are downloaded into this folder, subcharts are standalone
+crds/ # contains crds
+templates/ # passed through template engine, incorporate contents of values.yaml file
+templates/NOTES.txt # info printed on post installation and on viewing release status
+
+#generate chart
+helm create demo-chart
+
+# dry run install
+helm install demo-release ./demo --dry-run -f values-override.yaml
+
+# values can be also overridden by passing values override file on cmdline during installation
+# view configuration values
+helm show values
+
+# https://helm.sh/docs/chart_template_guide/subcharts_and_globals/
+# subcharts are located in charts/ directory and are standalone
+# values.yaml can override subchart config values:
+# mappingValues:
+#  key1: 'val1'
+# subchartName: # accessible to subcharts
+#  key2: 'overrideval2'
+# global: # accessible to both chart and subcharts
+#  thisVal: 'sthg'
+
+# view subchart values
+helm show values ./charts/mariadb/
+
+# download charts locally
+cd example
+helm fetch stable/jenkins
+cd ..
+# point helm to directory where helm has packaged charts in
+# creates index file inside the directory with descriptions of all charts
+# basically creates a helm repository, that can be uploaded to a http server
+helm repo index ./example/
+
+helm show values [CHART] [flags]
+
+# https://helm.sh/docs/topics/charts_hooks/
+# helm pre and post actions with hooks
+# hooks are templates located in the templates directory and are defined by annotations
+# hooks have weights (a hook with the lowest numeric weight is executed first)
+# hooks abort chart release if fail
+# hook object are standalone, need to clean themselves up, policy needs to be set to delete
+# manifest annotations example:
+#  annotations:
+    # This is what defines this resource as a hook. Without this line, the
+    # job is considered part of the release.
+#    "helm.sh/hook": post-install
+#    "helm.sh/hook-weight": "-5"
+#    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+
+# https://helm.sh/docs/topics/chart_tests/
+# https://helm.sh/docs/howto/charts_tips_and_tricks/#using-the-include-function
+# https://github.com/helm/charts/blob/master/stable/mysql/templates/tests/test-configmap.yaml
+# test is a special kind of hook, they have assertions
+helm install demo demo --namespace default
+helm test demo
+
+# creating libraries
+# after defining dependency in Chart.yaml (it's like npm's package.json) run
+dependencies:
+- name: common
+  version: "^0.0.5"
+  repository: "https://chart.helm.sh/incubator"
+# https://helm.sh/docs/chart_best_practices/templates/
+# https://helm.sh/docs/howto/charts_tips_and_tricks/
+# https://helm.sh/docs/chart_template_guide/named_templates/
+# https://helm.sh/docs/helm/helm_dependency_update/
+# https://helm.sh/docs/chart_template_guide/function_list/
+# https://helm.sh/docs/topics/library_charts/
+helm dependency update
+
+# files with names staring with underscore will not be rendered ex. _helpers.tpl
+
+# packaging and validating charts
+# https://helm.sh/docs/topics/provenance/
+helm package --sig --key key_name --keyring ./.gnupg/secring.gpg ./demo   # ex. using gpg key, creates *.prov file that needs to go to repo with the package file
+helm verify demo-0.1.0.tgz
+
+# adding RBAC with helm, helm has the same permissions as current user with context used by kubectl
+
+# working with plugins
+# https://helm.sh/docs/topics/plugins/
+helm plugin install https://github.com/adamreese/helm-env
+# export HELM_PLUGINS= # location where plugins are installed
+helm plugin list
+helm plugin uninstall plugin-name
+
+# helm storage backend https://helm.sh/docs/topics/advanced/
+# helm can use configmaps, secret (located in helm namespace) or SQL backend
+k get secret -l "owner=helm" --all-namepsaces
+# there is a limit of how many secrets can be stored in a helm namespace, then SQL backend should be concerned
+# it's best to configure preferred storage backend before staring to use helm,
+# otherwise complex data migration would be necessary
