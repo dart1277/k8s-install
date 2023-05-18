@@ -1,5 +1,5 @@
 #!/bin/bash
-export CLUSTER_NAME="ekscluster2"
+export CLUSTER_NAME="ekscluster"
 export ALB_SA_NAME="$CLUSTER_NAME-aws-load-balancer-controller"
 
 # or install https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html
