@@ -1,7 +1,7 @@
 #!/bin/bash
-export REPO_NAME="aws-ecr-cx"
+export REPO_NAME="aws-ecr-inventory"
 export REGION="us-east-1"
-aws ecr create-repository --repository-name "$REPO_NAME" --region "$REGION"
+aws ecr create-repository --repository-name "$REPO_NAME" --image-tag-mutability IMMUTABLE --image-scanning-configuration  scanOnPush=true --encryption-configuration encryptionType=AES256 --region "$REGION"
 
 export ECR_REPO_URI=$(aws ecr describe-repositories --query "repositories[]" --output json --no-cli-pager | jq -r ".[].repositoryUri" | grep "$REPO_NAME")
 
