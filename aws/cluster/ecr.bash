@@ -15,10 +15,10 @@ d image ls $ECR_REPO_URI
 export D_IMG_NAME="stable/inventory-api"
 export D_IMG_TAG="1.0"
 
-# docker build -t "$D_IMG_NAME:$D_IMG_TAG" .
-# docker tag "$D_IMG_NAME:$D_IMG_TAG" "$ECR_REPO_URI:$D_IMG_TAG"
-# docker push "$ECR_REPO_URI:$D_IMG_TAG"
-# docker rmi "$ECR_REPO_URI:$D_IMG_TAG"
+ docker build -t "$D_IMG_NAME:$D_IMG_TAG" .
+ docker tag "$D_IMG_NAME:$D_IMG_TAG" "$ECR_REPO_URI:$D_IMG_TAG"
+ docker push "$ECR_REPO_URI:$D_IMG_TAG"
+ docker rmi "$ECR_REPO_URI:$D_IMG_TAG"
 
 #aws ecr get-login-password \
 #     --region "$REGION" | helm registry login \

@@ -74,7 +74,7 @@ managedNodeGroups:
 - name: eks-node-group
   instanceType: t2.micro
   minSize: 1
-  maxSize: 5
+  maxSize: 6
   desiredCapacity: 3
   volumeSize: 30
   privateNetworking: true
@@ -126,5 +126,9 @@ aws eks update-cluster-config \
 
 # enable secret encryption using kms key
 # eksctl utils enable-secrets-encryption --cluster="$CLUSTER_NAME" --key-arn=arn:aws:kms:us-west-2:<account>:key/<key> --encrypt-existing-secrets=false --region="$AWS_REGION"
+
+# eksctl get nodegroup --cluster "$CLUSTER_NAME"
+# eksctl delete nodegroup --cluster "$CLUSTER_NAME" --name eks-node-group
+# eksctl create nodegroup -f eks.yaml
 
 # eksctl delete cluster --name "$CLUSTER_NAME"
