@@ -8,6 +8,7 @@ k get ds -n kube-system # aws-node is the CNI plugin
 # amazon-k8s-cni:v1.6.1 must be in v 1.6 or higher
 
 # https://docs.aws.amazon.com/eks/latest/userguide/cni-custom-network.html
+# https://repost.aws/knowledge-center/eks-multiple-cidr-ranges
 
 cluster_stack_name="eksctl-eks-ekscluster"
 region="us-east-2"
