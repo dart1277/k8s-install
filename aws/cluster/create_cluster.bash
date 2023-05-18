@@ -80,8 +80,16 @@ managedNodeGroups:
   privateNetworking: true
   # spot: true
   iam:
+  # https://eksctl.io/usage/iam-policies/
     withAddonPolicies:
       autoScaler: true # enable auto auto scaler, then install resource: https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md
+    attachPolicyARNs:
+      - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+      - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      - arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess
+      # - arn:aws:iam::1111111111:policy/kube2iam # add custom iam policy
+
 #  subnets:
 #    - private-one
   ssh:
