@@ -42,16 +42,20 @@ cluster_security_group_id=$(aws eks describe-cluster --name $cluster_name --quer
 
 # TODO adust subnet names
 
-subnet_id_1=$(aws cloudformation describe-stack-resources --stack-name my-eks-custom-networking-vpc \
-    --query "StackResources[?LogicalResourceId=='PrivateSubnet01'].PhysicalResourceId" --output text)
-subnet_id_2=$(aws cloudformation describe-stack-resources --stack-name my-eks-custom-networking-vpc \
-    --query "StackResources[?LogicalResourceId=='PrivateSubnet02'].PhysicalResourceId" --output text)
+new_subnet_id_1=$(aws ec2 create-subnet --vpc-id $vpc_id --availability-zone $az_1 --cidr-block 192.168.1.0/27 \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=my-eks-custom-networking-vpc-PrivateSubnet01},{Key=kubernetes.io/role/internal-elb,Value=1}]' \
+    --query Subnet.SubnetId --output text)
+new_subnet_id_2=$(aws ec2 create-subnet --vpc-id $vpc_id --availability-zone $az_2 --cidr-block 192.168.1.32/27 \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=my-eks-custom-networking-vpc-PrivateSubnet02},{Key=kubernetes.io/role/internal-elb,Value=1}]' \
+    --query Subnet.SubnetId --output text)
 
 subnet_id_3=""
 
-az_1=$(aws ec2 describe-subnets --subnet-ids $subnet_id_1 --query 'Subnets[*].AvailabilityZone' --output text)
-az_2=$(aws ec2 describe-subnets --subnet-ids $subnet_id_2 --query 'Subnets[*].AvailabilityZone' --output text)
+az_1=$(aws ec2 describe-subnets --subnet-ids $new_subnet_id_1 --query 'Subnets[*].AvailabilityZone' --output text)
+az_2=$(aws ec2 describe-subnets --subnet-ids $new_subnet_id_2 --query 'Subnets[*].AvailabilityZone' --output text)
 az_3=""
+
+cluster_security_group_id=$(aws eks describe-cluster --name $cluster_name --query cluster.resourcesVpcConfig.clusterSecurityGroupId --output text)
 
 cat >$az_1.yaml <<EOF
 apiVersion: crd.k8s.amazonaws.com/v1alpha1
