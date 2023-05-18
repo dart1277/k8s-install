@@ -132,3 +132,7 @@ aws eks update-cluster-config \
 # eksctl create nodegroup -f eks.yaml
 
 # eksctl delete cluster --name "$CLUSTER_NAME"
+
+# kubectl get pods -n default | grep nginx | awk '{print $1}'
+# re-run previous command
+# kubectl delete pods -n default `!!`
