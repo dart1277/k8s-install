@@ -69,6 +69,7 @@ availabilityZones: ["${AWS_REGION}a", "${AWS_REGION}b", "${AWS_REGION}c"]
 #    instanceTypes: ["m5.xlarge"]
 #    onDemandPercentageAboveBaseCapacity: 0
 #    spotInstancePools: 2
+#  labels: { lifecycle: Ec2Spot } # required by ec2 spot termination handler
 
 managedNodeGroups:
 - name: eks-node-group
@@ -130,9 +131,18 @@ aws eks update-cluster-config \
 # eksctl get nodegroup --cluster "$CLUSTER_NAME"
 # eksctl delete nodegroup --cluster "$CLUSTER_NAME" --name eks-node-group
 # eksctl create nodegroup -f eks.yaml
+# eksctl scale nodegroup --cluster "$CLUSTER_NAME" --nodes 0 --nodes-min 0  --name eks-node-group
+# eksctl utils nodegroup-health --cluster "$CLUSTER_NAME" --name eks-node-group
 
 # eksctl delete cluster --name "$CLUSTER_NAME"
 
 # kubectl get pods -n default | grep nginx | awk '{print $1}'
 # re-run previous command
 # kubectl delete pods -n default `!!`
+
+
+# node termination handler (needed by unmanaged node groups) for spot instances can be installed by running (with kubernetes 1.25+):
+# https://artifacthub.io/packages/helm/aws/aws-node-termination-handler
+# helm repo add eks https://aws.github.io/eks-charts/
+# helm upgrade --install --namespace kube-system --set nodeSelector.lifecycle=Ec2Spot --set rbac.pspEnabled=false aws-node-termination-handler eks/aws-node-termination-handler
+# unmanaged nodes needs to have label of lifecycle=Ec2Spot set
