@@ -11,7 +11,7 @@ export ADMIN_IPV4_ADDRESS="80.49.230.155"
 # aws ec2 import-key-pair --key-name "$KEY_PAIR_NAME" --public-key-material "file://./$KEY_FILE_NAME.pub"
 # chmod 400 "./$KEY_FILE_NAME"
 # if invalid base64 encoding error occurs run:
-# aws ec2 import-key-pair --key-name "$KEY_PAIR_NAME" --public-key-material "fileb://./$KEY_FILE_NAME.pub"
+aws ec2 import-key-pair --key-name "$KEY_PAIR_NAME" --public-key-material "fileb://./$KEY_FILE_NAME.pub"
 
 
 # update kubeconfig
