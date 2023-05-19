@@ -8,25 +8,33 @@ k get ds -n kube-system # aws-node is the CNI plugin
 # amazon-k8s-cni:v1.6.1 must be in v 1.6 or higher
 
 # https://docs.aws.amazon.com/eks/latest/userguide/cni-custom-network.html
+# https://aws.github.io/aws-eks-best-practices/networking/vpc-cni/
 # https://repost.aws/knowledge-center/eks-multiple-cidr-ranges
+# https://docs.aws.amazon.com/eks/latest/userguide/cni-increase-ip-addresses.html
+# https://docs.aws.amazon.com/eks/latest/userguide/calico.html
 
-cluster_stack_name="eksctl-eks-ekscluster"
-region="us-east-2"
 cluster_name="ekscluster"
+cluster_stack_name="eksctl-$cluster_name-cluster"
+region="us-east-1"
 secondary_cidr="100.64.0.0/16"
 subnet_a_cidr="100.64.0.0/19"
 subnet_b_cidr="100.64.32.0/19"
 subnet_c_cidr="100.64.64.0/19"
 
+# check CNI plugin version"
+kubectl describe daemonset aws-node --namespace kube-system | grep Image | cut -d "/" -f 2
+
 vpc_id=`aws cloudformation describe-stack-resources --stack-name ${cluster_stack_name} --query "StackResources[?LogicalResourceId=='VPC'].PhysicalResourceId" --output text`
 aws ec2 associate-vpc-cidr-block --vpc-id ${vpc_id} --cidr-block ${secondary_cidr}
 sleep 5
+aws ec2 describe-vpcs --vpc-ids $vpc_id --query 'Vpcs[*].CidrBlockAssociationSet[*].{CIDRBlock: CidrBlock, State: CidrBlockState.State}' --out table
+
 
 nat_gateway_id=`aws ec2 describe-nat-gateways --query "NatGateways[?VpcId=='${vpc_id}'].NatGatewayId" --output text`
 
 aws cloudformation deploy \
-    --stack-name secondary-subnets \
-    --template-file subnets.json \
+    --stack-name "$cluster_name-secondary-subnets" \
+    --template-file cni_additional_subnets.json \
     --parameter-overrides \
         Region=${region} \
         VPCID=${vpc_id} \
@@ -36,29 +44,22 @@ aws cloudformation deploy \
         SubnetCCidr=${subnet_c_cidr} \
         NATGatewayId=${nat_gateway_id}
 
-kubectl set env daemonset aws-node -n kube-system AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG=true
-# kubectl set env daemonset aws-node -n kube-system ENI_CONFIG_LABEL_DEF=failure-domain.beta.kubernetes.io/zone
-kubectl set env daemonset aws-node -n kube-system ENI_CONFIG_LABEL_DEF=topology.kubernetes.io/zone
 cluster_security_group_id=$(aws eks describe-cluster --name $cluster_name --query cluster.resourcesVpcConfig.clusterSecurityGroupId --output text)
 
-# TODO adust subnet names
-
-new_subnet_id_1=$(aws ec2 create-subnet --vpc-id $vpc_id --availability-zone $az_1 --cidr-block 192.168.1.0/27 \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=my-eks-custom-networking-vpc-PrivateSubnet01},{Key=kubernetes.io/role/internal-elb,Value=1}]' \
-    --query Subnet.SubnetId --output text)
-new_subnet_id_2=$(aws ec2 create-subnet --vpc-id $vpc_id --availability-zone $az_2 --cidr-block 192.168.1.32/27 \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=my-eks-custom-networking-vpc-PrivateSubnet02},{Key=kubernetes.io/role/internal-elb,Value=1}]' \
-    --query Subnet.SubnetId --output text)
-
-subnet_id_3=""
-
+new_subnet_id_1=$(aws cloudformation describe-stacks --region $region --query "Stacks[?StackName=='$cluster_name-secondary-subnets'][].Outputs[?OutputKey=='SubnetIdA'].OutputValue" --output text)
+new_subnet_id_2=$(aws cloudformation describe-stacks --region $region --query "Stacks[?StackName=='$cluster_name-secondary-subnets'][].Outputs[?OutputKey=='SubnetIdB'].OutputValue" --output text)
+new_subnet_id_3=$(aws cloudformation describe-stacks --region $region --query "Stacks[?StackName=='$cluster_name-secondary-subnets'][].Outputs[?OutputKey=='SubnetIdC'].OutputValue" --output text)
 az_1=$(aws ec2 describe-subnets --subnet-ids $new_subnet_id_1 --query 'Subnets[*].AvailabilityZone' --output text)
 az_2=$(aws ec2 describe-subnets --subnet-ids $new_subnet_id_2 --query 'Subnets[*].AvailabilityZone' --output text)
-az_3=""
+az_3=$(aws ec2 describe-subnets --subnet-ids $new_subnet_id_3 --query 'Subnets[*].AvailabilityZone' --output text)
+
+kubectl set env daemonset aws-node -n kube-system AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG=true
+kubectl describe daemonset aws-node -n kube-system | grep ENI_CONFIG_ANNOTATION_DEF # set for production cluster
+kubectl set env daemonset aws-node -n kube-system ENI_CONFIG_LABEL_DEF=topology.kubernetes.io/zone
 
 cluster_security_group_id=$(aws eks describe-cluster --name $cluster_name --query cluster.resourcesVpcConfig.clusterSecurityGroupId --output text)
 
-cat >$az_1.yaml <<EOF
+cat > "cni_eni_$az_1.yaml" <<EOF
 apiVersion: crd.k8s.amazonaws.com/v1alpha1
 kind: ENIConfig
 metadata:
@@ -69,7 +70,7 @@ spec:
   subnet: $new_subnet_id_1
 EOF
 
-cat >$az_2.yaml <<EOF
+cat > "cni_eni_$az_2.yaml" <<EOF
 apiVersion: crd.k8s.amazonaws.com/v1alpha1
 kind: ENIConfig
 metadata:
@@ -80,7 +81,7 @@ spec:
   subnet: $new_subnet_id_2
 EOF
 
-cat >$az_3.yaml <<EOF
+cat > "cni_eni_$az_3.yaml" <<EOF
 apiVersion: crd.k8s.amazonaws.com/v1alpha1
 kind: ENIConfig
 metadata:
@@ -91,4 +92,21 @@ spec:
   subnet: $new_subnet_id_3
 EOF
 
+k apply -f "cni_eni_$az_1.yaml"
+k apply -f "cni_eni_$az_2.yaml"
+k apply -f "cni_eni_$az_3.yaml"
+
+kubectl get ENIConfigs
+
 # then replace all worker nodes (can be terminated in EC2 console)
+
+# if the following message will occur while starting a pod:
+# Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox "xxx": plugin type="aws-cni" name="aws-cni" failed (add): add cmd: failed to assign an IP address to container
+
+
+# eksctl get nodegroup --cluster "$cluster_name"
+# eksctl delete nodegroup --cluster "$cluster_name" --name eks-node-group
+# eksctl create nodegroup -f eks.yaml
+
+# test with:
+# k run -it --restart=Never --rm --image=busybox:latest -- busybox
