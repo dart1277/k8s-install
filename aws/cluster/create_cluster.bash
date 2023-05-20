@@ -104,6 +104,26 @@ managedNodeGroups:
 #  clusterLogging:
 #    enableTypes: ["*"]
 
+fargateProfiles:
+#  - name: fp-default
+#    selectors:
+#      # All workloads in the "default" Kubernetes namespace will be
+#      # scheduled onto Fargate:
+#      - namespace: default
+#      # All workloads in the "kube-system" Kubernetes namespace will be
+#      # scheduled onto Fargate:
+#      - namespace: kube-system
+  - name: fp-dev
+    selectors:
+      # All workloads in the "dev" Kubernetes namespace matching the following
+      # label selectors will be scheduled onto Fargate:
+      - namespace: dev
+        labels:
+          env: dev
+          checks: passed
+# eksctl create fargateprofile -f eks.yaml
+# eksctl get fargateprofile --cluster $CLUSTER_NAME -o yaml
+# k run -it --restart=Never --rm --image=busybox:latest -l env=dev,checks=passed -n dev -- busybox2
 EOF
 
 # you can enable logging with 'eksctl utils update-cluster-logging --enable-types={SPECIFY-YOUR-LOG-TYPES-HERE (e.g. all)} --region=$AWS_REGION --cluster=$CLUSTER_NAME'
